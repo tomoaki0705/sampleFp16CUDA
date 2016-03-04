@@ -57,8 +57,10 @@ CheckRender *g_CheckRender = NULL;
 
 ////////////////////////////////////////////////////////////////////////////////
 // constants / global variables
-unsigned int window_width = 512;
-unsigned int window_height = 512;
+const unsigned int IMAGE_HEIGHT = 512;
+const unsigned int IMAGE_WIDTH  = IMAGE_HEIGHT;
+unsigned int window_width  = IMAGE_WIDTH;
+unsigned int window_height = IMAGE_HEIGHT;
 unsigned int image_width = 512;
 unsigned int image_height = 512;
 int iGLUTWindowHandle = 0;          // handle to the GLUT window
@@ -95,6 +97,8 @@ char **pArgv = NULL;
 static int fpsCount = 0;
 static int fpsLimit = 1;
 StopWatchInterface *timer = NULL;
+
+unsigned short in_gain[IMAGE_WIDTH*IMAGE_HEIGHT];
 
 #ifndef USE_TEXTURE_RGBA8UI
 #   pragma message("Note: Using Texture fmt GL_RGBA16F_ARB")
@@ -143,6 +147,7 @@ bool IsOpenGLAvailable(const char *appName)
 ////////////////////////////////////////////////////////////////////////////////
 extern "C" void
 launch_cudaProcess(dim3 grid, dim3 block, int sbytes,
+                   unsigned short *g_indata,
                    unsigned int *g_odata,
                    int imgw);
 
@@ -269,7 +274,7 @@ void generateCUDAImage()
     //dim3 block(16, 16, 1);
     dim3 grid(image_width / block.x, image_height / block.y, 1);
     // execute CUDA kernel
-    launch_cudaProcess(grid, block, 0, out_data, image_width);
+    launch_cudaProcess(grid, block, 0, in_gain, out_data, image_width);
 
 
     // CUDA generated data in cuda memory or in a mapped PBO made of BGRA 8 bits
@@ -530,6 +535,11 @@ main(int argc, char **argv)
         printf("exiting...\n");
         exit(EXIT_WAIVED);
     }
+
+	for (unsigned int i = 0; i < image_width * image_height; i++)
+	{
+		in_gain[i] = 0x3800;
+	}
 
     if (ref_file)
     {
