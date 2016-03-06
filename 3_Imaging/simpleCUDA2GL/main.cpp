@@ -64,6 +64,8 @@ unsigned int window_height = IMAGE_HEIGHT;
 unsigned int image_width = 512;
 unsigned int image_height = 512;
 int iGLUTWindowHandle = 0;          // handle to the GLUT window
+short *in_gain;
+short *in_gain_cuda;
 
 // pbo and fbo variables
 #ifdef USE_TEXSUBIMAGE2D
@@ -71,6 +73,7 @@ GLuint pbo_dest;
 struct cudaGraphicsResource *cuda_pbo_dest_resource;
 #else
 unsigned int *cuda_dest_resource;
+unsigned short *cuda_source_resource;
 GLuint shDrawTex;  // draws a texture
 struct cudaGraphicsResource *cuda_tex_result_resource;
 #endif
@@ -97,8 +100,6 @@ char **pArgv = NULL;
 static int fpsCount = 0;
 static int fpsLimit = 1;
 StopWatchInterface *timer = NULL;
-
-unsigned short in_gain[IMAGE_WIDTH*IMAGE_HEIGHT];
 
 #ifndef USE_TEXTURE_RGBA8UI
 #   pragma message("Note: Using Texture fmt GL_RGBA16F_ARB")
@@ -147,7 +148,7 @@ bool IsOpenGLAvailable(const char *appName)
 ////////////////////////////////////////////////////////////////////////////////
 extern "C" void
 launch_cudaProcess(dim3 grid, dim3 block, int sbytes,
-                   unsigned short *g_indata,
+                   short *g_indata,
                    unsigned int *g_odata,
                    int imgw);
 
@@ -269,12 +270,14 @@ void generateCUDAImage()
 #else
     out_data = cuda_dest_resource;
 #endif
-    // calculate grid size
+
+	// calculate grid size
     dim3 block(16, 16, 1);
     //dim3 block(16, 16, 1);
     dim3 grid(image_width / block.x, image_height / block.y, 1);
+	cudaMemcpy(in_gain_cuda, in_gain, image_height*image_width*sizeof(short), cudaMemcpyHostToDevice);
     // execute CUDA kernel
-    launch_cudaProcess(grid, block, 0, in_gain, out_data, image_width);
+    launch_cudaProcess(grid, block, 0, in_gain_cuda, out_data, image_width);
 
 
     // CUDA generated data in cuda memory or in a mapped PBO made of BGRA 8 bits
@@ -296,13 +299,18 @@ void generateCUDAImage()
     // We want to copy cuda_dest_resource data to the texture
     // map buffer objects to get CUDA device pointers
     cudaArray *texture_ptr;
+	cudaArray *input_ptr;
     checkCudaErrors(cudaGraphicsMapResources(1, &cuda_tex_result_resource, 0));
     checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_result_resource, 0, 0));
+	//checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&input_ptr, cuda_tex_screen_resource, 1, 0));
 
     int num_texels = image_width * image_height;
     int num_values = num_texels * 4;
     int size_tex_data = sizeof(GLubyte) * num_values;
+	int gain_values = num_texels * 2;
+	int size_gain = sizeof(GLubyte) * gain_values;
     checkCudaErrors(cudaMemcpyToArray(texture_ptr, 0, 0, cuda_dest_resource, size_tex_data, cudaMemcpyDeviceToDevice));
+	//checkCudaErrors(cudaMemcpyToArray(input_ptr,   0, 0, cuda_source_resource, size_gain, cudaMemcpyHostToDevice));
 
     checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_tex_result_resource, 0));
 #endif
@@ -505,6 +513,17 @@ deleteTexture(GLuint *tex)
     *tex = 0;
 }
 
+void initArray()
+{
+	in_gain = new short[image_height*image_width];
+	cudaMalloc((short**)&in_gain_cuda, (sizeof(short)*image_height*image_width));
+		
+	for (int i = 0; i < image_height*image_width; i++)
+	{
+		in_gain[i] = 0x3800; // 0.5f
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
 ////////////////////////////////////////////////////////////////////////////////
@@ -536,10 +555,7 @@ main(int argc, char **argv)
         exit(EXIT_WAIVED);
     }
 
-	for (unsigned int i = 0; i < image_width * image_height; i++)
-	{
-		in_gain[i] = 0x3800;
-	}
+	initArray();
 
     if (ref_file)
     {
@@ -569,6 +585,7 @@ void FreeResource()
     deletePBO(&pbo_dest);
 #else
     cudaFree(cuda_dest_resource);
+	cudaFree(cuda_source_resource);
 #endif
     deleteTexture(&tex_screen);
     deleteTexture(&tex_cudaResult);
@@ -687,6 +704,7 @@ void initCUDABuffers()
     num_values = num_texels * 4;
     size_tex_data = sizeof(GLubyte) * num_values;
     checkCudaErrors(cudaMalloc((void **)&cuda_dest_resource, size_tex_data));
+	checkCudaErrors(cudaMalloc((void **)&cuda_source_resource, (sizeof(GLubyte)*num_texels*2)));
     //checkCudaErrors(cudaHostAlloc((void**)&cuda_dest_resource, size_tex_data, ));
 }
 #endif

@@ -34,7 +34,7 @@ __device__ int rgbToInt(float r, float g, float b)
 }
 
 __global__ void
-cudaProcess(unsigned int *g_odata, unsigned short *g_indata, int imgw)
+cudaProcess(unsigned int *g_odata, short *g_indata, int imgw)
 {
     extern __shared__ uchar4 sdata[];
 
@@ -59,7 +59,7 @@ cudaProcess(unsigned int *g_odata, unsigned short *g_indata, int imgw)
 
 extern "C" void
 launch_cudaProcess(dim3 grid, dim3 block, int sbytes,
-                   unsigned short *g_indata,
+                   short *g_indata,
                    unsigned int *g_odata,
                    int imgw)
 {
