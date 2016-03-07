@@ -249,37 +249,37 @@ static const char *_cudaGetErrorEnum(cudaError_t error)
         case cudaErrorNotSupported:
             return "cudaErrorNotSupported";
 
-        /* Since CUDA 6.0 */
-        case cudaErrorHardwareStackError:
-            return "cudaErrorHardwareStackError";
+        ///* Since CUDA 6.0 */
+        //case cudaErrorHardwareStackError:
+        //    return "cudaErrorHardwareStackError";
 
-        case cudaErrorIllegalInstruction:
-            return "cudaErrorIllegalInstruction";
+        //case cudaErrorIllegalInstruction:
+        //    return "cudaErrorIllegalInstruction";
 
-        case cudaErrorMisalignedAddress:
-            return "cudaErrorMisalignedAddress";
+        //case cudaErrorMisalignedAddress:
+        //    return "cudaErrorMisalignedAddress";
 
-        case cudaErrorInvalidAddressSpace:
-            return "cudaErrorInvalidAddressSpace";
+        //case cudaErrorInvalidAddressSpace:
+        //    return "cudaErrorInvalidAddressSpace";
 
-        case cudaErrorInvalidPc:
-            return "cudaErrorInvalidPc";
+        //case cudaErrorInvalidPc:
+        //    return "cudaErrorInvalidPc";
 
-        case cudaErrorIllegalAddress:
-            return "cudaErrorIllegalAddress";
+        //case cudaErrorIllegalAddress:
+        //    return "cudaErrorIllegalAddress";
 
-        ///* Since CUDA 6.5*/
-        //case cudaErrorInvalidPtx:
-        //    return "cudaErrorInvalidPtx";
+        /////* Since CUDA 6.5*/
+        ////case cudaErrorInvalidPtx:
+        ////    return "cudaErrorInvalidPtx";
 
-        //case cudaErrorInvalidGraphicsContext:
-        //    return "cudaErrorInvalidGraphicsContext";
+        ////case cudaErrorInvalidGraphicsContext:
+        ////    return "cudaErrorInvalidGraphicsContext";
 
-        case cudaErrorStartupFailure:
-            return "cudaErrorStartupFailure";
+        //case cudaErrorStartupFailure:
+        //    return "cudaErrorStartupFailure";
 
-        case cudaErrorApiFailureBase:
-            return "cudaErrorApiFailureBase";
+        //case cudaErrorApiFailureBase:
+        //    return "cudaErrorApiFailureBase";
     }
 
     return "<unknown>";
