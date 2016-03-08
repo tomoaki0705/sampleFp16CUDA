@@ -9,6 +9,19 @@
  *
  */
 
+//////////////////
+/// OpenCV part
+//////////////////
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/videoio/videoio.hpp>
+#include <opencv2/core/core.hpp>
+
+const unsigned int counterBufferSize = 16;
+int counterBufferIndex = 0;
+double averageBuffer[counterBufferSize];
+double squareBuffer [counterBufferSize];
+double currentSum      = 0;
+double currentSqureSum = 0.0f;
 
 // USE_TEXSUBIMAGE2D uses glTexSubImage2D() to update the final result
 // commenting it will make the sample use the other way :
@@ -275,7 +288,19 @@ void generateCUDAImage()
     dim3 block(16, 16, 1);
     //dim3 block(16, 16, 1);
     dim3 grid(image_width / block.x, image_height / block.y, 1);
+	int64 b = cv::getTickCount();
 	cudaMemcpy(in_gain_cuda, in_gain, image_height*image_width*sizeof(short), cudaMemcpyHostToDevice);
+	int64 e = cv::getTickCount();
+	double result = (e - b) / cv::getTickFrequency();
+	currentSum      = currentSum      - averageBuffer[counterBufferIndex] + result;
+	currentSqureSum = currentSqureSum - squareBuffer[counterBufferIndex] + (result*result);
+	averageBuffer[counterBufferIndex] = result;
+	squareBuffer [counterBufferIndex] = result*result;
+	counterBufferIndex = (++counterBufferIndex) & (counterBufferSize-1);
+
+	double average = (currentSum / counterBufferSize);
+	double sd = sqrt((currentSqureSum / counterBufferSize) - average*average);
+	std::cout << "copy " << average * 1000.0f << std::showpos << sd * 1000.0f << std::noshowpos << " [ms]  \r";
     // execute CUDA kernel
     launch_cudaProcess(grid, block, 0, in_gain_cuda, out_data, image_width);
 
@@ -299,7 +324,6 @@ void generateCUDAImage()
     // We want to copy cuda_dest_resource data to the texture
     // map buffer objects to get CUDA device pointers
     cudaArray *texture_ptr;
-	cudaArray *input_ptr;
     checkCudaErrors(cudaGraphicsMapResources(1, &cuda_tex_result_resource, 0));
     checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&texture_ptr, cuda_tex_result_resource, 0, 0));
 	//checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&input_ptr, cuda_tex_screen_resource, 1, 0));
@@ -518,9 +542,14 @@ void initArray()
 	in_gain = new short[image_height*image_width];
 	cudaMalloc((short**)&in_gain_cuda, (sizeof(short)*image_height*image_width));
 		
-	for (int i = 0; i < image_height*image_width; i++)
+	for (unsigned int i = 0; i < image_height*image_width; i++)
 	{
 		in_gain[i] = 0x3800; // 0.5f
+	}
+	for (unsigned int i = 0; i < counterBufferSize; i++)
+	{
+		averageBuffer[i] = 0;
+		squareBuffer [i] = 0;
 	}
 }
 
@@ -533,6 +562,10 @@ main(int argc, char **argv)
 #if defined(__linux__)
     setenv ("DISPLAY", ":0", 0);
 #endif
+
+	cv::VideoCapture capture(0);
+	cv::Mat image;
+	capture >> image;
 
     printf("%s Starting...\n\n", argv[0]);
 
@@ -555,6 +588,8 @@ main(int argc, char **argv)
         exit(EXIT_WAIVED);
     }
 
+	image_width  = (int)capture.get(cv::CAP_PROP_FRAME_WIDTH);
+	image_height = (int)capture.get(cv::CAP_PROP_FRAME_HEIGHT);
 	initArray();
 
     if (ref_file)
@@ -568,6 +603,7 @@ main(int argc, char **argv)
         runStdProgram(argc, argv);
     }
 
+	capture.release();
     exit(EXIT_SUCCESS);
 }
 
