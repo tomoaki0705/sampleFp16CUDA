@@ -15,6 +15,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/videoio/videoio.hpp>
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 cv::VideoCapture capture;
 
 const unsigned int counterBufferSize = 16;
@@ -288,11 +289,12 @@ void generateCUDAImage()
 #endif
 	cv::Mat image;
 	capture >> image;
+	cv::cvtColor(image.clone(), image, cv::COLOR_BGR2GRAY);
+	cv::flip(image.clone(), image, 0);
 
 	cudaMemcpy(imageDataCuda, image.data, image_height*image_width*sizeof(unsigned char), cudaMemcpyHostToDevice);
 
 	// calculate grid size
-    //dim3 block(16, 12, 1);
     dim3 block(16, 16, 1);
     dim3 grid(image_width / block.x, image_height / block.y, 1);
 	int64 b = cv::getTickCount();
@@ -307,7 +309,7 @@ void generateCUDAImage()
 
 	double average = (currentSum / counterBufferSize);
 	double sd = sqrt((currentSqureSum / counterBufferSize) - average*average);
-	std::cout << "copy " << average * 1000.0f << std::showpos << sd * 1000.0f << std::noshowpos << " [ms]  " << std::endl;
+	std::cout << "copy " << average * 1000.0f << std::showpos << sd * 1000.0f << std::noshowpos << " [ms]  \r";
     // execute CUDA kernel
 	launch_cudaProcess(grid, block, 0, in_gain_cuda, imageDataCuda, out_data, image_width);
 
