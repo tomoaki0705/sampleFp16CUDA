@@ -552,9 +552,17 @@ void initArray()
 	cudaMalloc((short**)&in_gain_cuda, (sizeof(short)*image_height*image_width));
 	cudaMalloc((unsigned char**)&imageDataCuda, (sizeof(unsigned char)*image_height*image_width));
 		
-	for (unsigned int i = 0; i < image_height*image_width; i++)
+	for (unsigned int y = 0; y < image_height; y++)
+	for (unsigned int x = 0; x < image_width ; x++)
 	{
-		in_gain[i] = 0x3800; // 0.5f
+		if (x < image_width/2)
+		{
+			in_gain[y*image_width+x] = 0x3800; // 0.5f
+		}
+		else
+		{
+			in_gain[y*image_width+x] = 0x3C00;
+		}
 	}
 	for (unsigned int i = 0; i < counterBufferSize; i++)
 	{
