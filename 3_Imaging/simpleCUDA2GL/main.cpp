@@ -15,6 +15,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/videoio/videoio.hpp>
 #include <opencv2/core/core.hpp>
+cv::VideoCapture capture;
 
 const unsigned int counterBufferSize = 16;
 int counterBufferIndex = 0;
@@ -79,6 +80,7 @@ unsigned int image_height = 512;
 int iGLUTWindowHandle = 0;          // handle to the GLUT window
 short *in_gain;
 short *in_gain_cuda;
+unsigned char *imageDataCuda;
 
 // pbo and fbo variables
 #ifdef USE_TEXSUBIMAGE2D
@@ -162,6 +164,7 @@ bool IsOpenGLAvailable(const char *appName)
 extern "C" void
 launch_cudaProcess(dim3 grid, dim3 block, int sbytes,
                    short *g_indata,
+				   unsigned char *imageData,
                    unsigned int *g_odata,
                    int imgw);
 
@@ -283,10 +286,14 @@ void generateCUDAImage()
 #else
     out_data = cuda_dest_resource;
 #endif
+	cv::Mat image;
+	capture >> image;
+
+	cudaMemcpy(imageDataCuda, image.data, image_height*image_width*sizeof(unsigned char), cudaMemcpyHostToDevice);
 
 	// calculate grid size
+    //dim3 block(16, 12, 1);
     dim3 block(16, 16, 1);
-    //dim3 block(16, 16, 1);
     dim3 grid(image_width / block.x, image_height / block.y, 1);
 	int64 b = cv::getTickCount();
 	cudaMemcpy(in_gain_cuda, in_gain, image_height*image_width*sizeof(short), cudaMemcpyHostToDevice);
@@ -300,9 +307,9 @@ void generateCUDAImage()
 
 	double average = (currentSum / counterBufferSize);
 	double sd = sqrt((currentSqureSum / counterBufferSize) - average*average);
-	std::cout << "copy " << average * 1000.0f << std::showpos << sd * 1000.0f << std::noshowpos << " [ms]  \r";
+	std::cout << "copy " << average * 1000.0f << std::showpos << sd * 1000.0f << std::noshowpos << " [ms]  " << std::endl;
     // execute CUDA kernel
-    launch_cudaProcess(grid, block, 0, in_gain_cuda, out_data, image_width);
+	launch_cudaProcess(grid, block, 0, in_gain_cuda, imageDataCuda, out_data, image_width);
 
 
     // CUDA generated data in cuda memory or in a mapped PBO made of BGRA 8 bits
@@ -541,6 +548,7 @@ void initArray()
 {
 	in_gain = new short[image_height*image_width];
 	cudaMalloc((short**)&in_gain_cuda, (sizeof(short)*image_height*image_width));
+	cudaMalloc((unsigned char**)&imageDataCuda, (sizeof(unsigned char)*image_height*image_width));
 		
 	for (unsigned int i = 0; i < image_height*image_width; i++)
 	{
@@ -563,7 +571,7 @@ main(int argc, char **argv)
     setenv ("DISPLAY", ":0", 0);
 #endif
 
-	cv::VideoCapture capture(0);
+	capture.open(0);
 	cv::Mat image;
 	capture >> image;
 
