@@ -73,8 +73,8 @@ CheckRender *g_CheckRender = NULL;
 // constants / global variables
 const unsigned int IMAGE_HEIGHT = 512;
 const unsigned int IMAGE_WIDTH  = IMAGE_HEIGHT;
-unsigned int window_width  = IMAGE_WIDTH;
-unsigned int window_height = IMAGE_HEIGHT;
+unsigned int window_width  = 640;
+unsigned int window_height = 480;
 unsigned int image_width = 512;
 unsigned int image_height = 512;
 int iGLUTWindowHandle = 0;          // handle to the GLUT window
