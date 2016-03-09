@@ -289,10 +289,9 @@ void generateCUDAImage()
 #endif
 	cv::Mat image;
 	capture >> image;
-	cv::cvtColor(image.clone(), image, cv::COLOR_BGR2GRAY);
 	cv::flip(image.clone(), image, 0);
 
-	cudaMemcpy(imageDataCuda, image.data, image_height*image_width*sizeof(unsigned char), cudaMemcpyHostToDevice);
+	cudaMemcpy(imageDataCuda, image.data, image_height*image_width*sizeof(char)*3, cudaMemcpyHostToDevice);
 
 	// calculate grid size
     dim3 block(16, 16, 1);
@@ -550,7 +549,7 @@ void initArray()
 {
 	in_gain = new short[image_height*image_width];
 	cudaMalloc((short**)&in_gain_cuda, (sizeof(short)*image_height*image_width));
-	cudaMalloc((unsigned char**)&imageDataCuda, (sizeof(unsigned char)*image_height*image_width));
+	cudaMalloc((unsigned char**)&imageDataCuda, (sizeof(unsigned char)*image_height*image_width*3));
 		
 	for (unsigned int y = 0; y < image_height; y++)
 	for (unsigned int x = 0; x < image_width ; x++)

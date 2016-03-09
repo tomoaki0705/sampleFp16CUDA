@@ -47,11 +47,14 @@ cudaProcess(unsigned int *g_odata, short *g_indata, unsigned char* imageData, in
 	float gain;
 	gain = __half2float(a);
 
-	float f = imageData[y*imgw+x];
-    uchar4 c4;
-	c4.x = (unsigned char)(f * gain);
-	c4.y = (unsigned char)(f * gain);
-	c4.z = (unsigned char)(f * gain);
+	float b = imageData[(y*imgw+x)*3  ];
+	float g = imageData[(y*imgw+x)*3+1];
+	float r = imageData[(y*imgw+x)*3+2];
+
+	uchar4 c4;
+	c4.x = (unsigned char)(b * gain);
+	c4.y = (unsigned char)(g * gain);
+	c4.z = (unsigned char)(r * gain);
     g_odata[y*imgw+x] = rgbToInt(c4.z, c4.y, c4.x);
 }
 
